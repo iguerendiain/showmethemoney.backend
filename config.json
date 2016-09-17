@@ -1,0 +1,14 @@
+{
+	"apiPort":8050,
+	"apiUrl":"http://192.168.1.2:8050",
+	"dbUri":"localhost/smtm",
+	"federated":{
+		"google":{
+			"clientSecret":"",
+			"clientId":""
+		}
+	},
+	"validUsers":[
+		"iguerendiain@siema.com.ar"
+	]
+}
