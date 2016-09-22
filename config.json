@@ -1,7 +1,18 @@
 {
 	"apiPort":8050,
 	"apiUrl":"http://192.168.1.2:8050",
-	"dbUri":"localhost/smtm",
+	"db":{
+		"host":"localhost",
+		"database":"smtm",
+		"username":"postgres",
+		"password":"",
+		"type":"postgres",
+		"pool":{
+			"max":5,
+			"min":0,
+			"idle":10000
+		}
+	},
 	"federated":{
 		"google":{
 			"clientSecret":"",

@@ -6,8 +6,10 @@ var config = require('../config');
 var mainSync = require('../resources/mainSync');
 var logger = require('../modules/logger');
 
-exports.getAPI = function(){
+exports.getAPI = function(sequelize){
     var app = express();
+
+    app.locals.sequelize = sequelize;
 
     app.use(bodyParser.json());
     app.use(cors({origin:true,credentials:true}));
