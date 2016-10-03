@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "async": "^2.0.1",
     "body-parser": "^1.15.2",
     "colors": "^1.1.2",
     "connect-multiparty": "^2.0.0",

@@ -17,13 +17,15 @@ exports.init = function(cb){
   var Currency = sequelize.define('currency',{
     name:Sequelize.STRING,
     slug:Sequelize.STRING,
-    factor:Sequelize.FLOAT
+    factor:Sequelize.FLOAT,
+    deleted:{type:Sequelize.BOOLEAN, defaultValue:0}
   });
 
   var Account = sequelize.define('account',{
     name:Sequelize.STRING,
     slug:Sequelize.STRING,
-    currency:Sequelize.STRING
+    currency:Sequelize.STRING,
+    deleted:{type:Sequelize.BOOLEAN, defaultValue:false}
   });
 
   var Record = sequelize.define('record',{
@@ -31,7 +33,8 @@ exports.init = function(cb){
     account:Sequelize.STRING,
     currency:Sequelize.STRING,
     type:{type: Sequelize.STRING, enum: ['PATCH','INCOME','EXPENSE']},
-    amount:Sequelize.INTEGER
+    amount:Sequelize.INTEGER,
+    deleted:{type:Sequelize.BOOLEAN, defaultValue:0}
   });
 
   exports.Currency = Currency;
