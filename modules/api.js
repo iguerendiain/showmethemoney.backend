@@ -2,15 +2,16 @@ var cors = require('cors');
 var express = require('express');
 var bodyParser = require('body-parser');
 
+var Dal = require('./dal');
 var config = require('../config');
 var mainSync = require('../resources/mainSync');
 var google = require('../resources/google');
 var logger = require('../modules/logger');
 
-exports.getAPI = function(sequelize){
+exports.getAPI = function(db){
     var app = express();
 
-    app.locals.sequelize = sequelize;
+    app.locals.dal = new Dal(db);
 
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({extended:true}));
