@@ -16,6 +16,10 @@ methods.getOneUserByEmail = function(email,cb){
 	self.runQueryForOneRecord(query,params,cb);
 }
 
+methods.getUser = function(id,cb){
+	self.getById("person",id,cb);
+}
+
 methods.getFirstOrNull = function(results){
 	if (results!=null && results.length > 0){
 		return results[0];
@@ -86,6 +90,16 @@ methods.getClientByIdAndType = function(clientId, clientType, cb){
 	self.runQueryForOneRecord(query, params, cb);
 }
 
+methods.getClient = function(id,cb){
+	methods.getById("client",id,cb);
+}
+
+methods.getById = function(table, id, cb){
+	var query = "select * from $1 where id = $2::int";
+	var params = [table,id];
+	self.runQueryForOneRecord(query,params,cb);
+}
+
 methods.createClient = function(clientid, clienttype, userid, cb){
 	var query = "insert into client (clientid, type, owner) values ($1, $2, $3::int)";
 	var params = [clientid, clienttype, userid];
@@ -110,6 +124,43 @@ methods.getSessionByToken = function(token,cb){
 	var params = [token];
 
 	self.runQueryForOneRecord(query, params, cb);
+}
+
+
+methods.getAllRecordsOwnedBy = function(userid, cb){
+}
+
+methods.getAllCurrenciesOwnedBy = function(userid, cb){
+}
+
+methods.getAllAccountsOwnedBy = function(userid, cb){
+}
+
+methods.getDeletedRecordsOwnedBy = function(userid, cb){
+}
+
+methods.getDeletedCurrenciesOwnedBy = function(userid, cb){
+}
+
+methods.getDeletedAccountsOwnedBy = function(userid, cb){
+}
+
+methods.saveNewCurrencies = function(currencies, userid, cb){
+}
+
+methods.saveNewAccounts = function(accounts, userid, cb){
+}
+
+methods.saveNewRecords = function(records, userid, cb){
+}
+
+methods.markRecordsAsDeleted = function(records, userid, cb){
+}
+
+methods.markAccountsAsDeleted = function(accounts, userid, cb){
+}
+
+methods.markCurrenciesAsDeleted = function(currencies, userid, cb){
 }
 
 module.exports = Dal;

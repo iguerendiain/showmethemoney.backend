@@ -2,6 +2,7 @@ var cors = require('cors');
 var express = require('express');
 var bodyParser = require('body-parser');
 
+var auth = require('./auth');
 var Dal = require('./dal');
 var config = require('../config');
 var mainSync = require('../resources/mainSync');
@@ -19,10 +20,12 @@ exports.getAPI = function(db){
 
     // Authentication
     app.post('/createSessionWithGoogle', google.createSessionWithGoogle);
+    // app.delete('/session', auth.ensureAuthenticated, session.destroyCurrent);
+    // app.delete('/session/all', auth.ensureAuthenticated, session.destroyAllSessions);
 
     // Main Sync
-    app.get('/mainSync', mainSync.get);
-    app.post('/mainSync', mainSync.post);
+    app.get('/mainSync', auth.ensureAuthenticated, /*auth.isAllowed, */mainSync.get);
+    app.post('/mainSync', auth.ensureAuthenticated, /*auth.isAllowed, */mainSync.post);
 
     return app;
 }
