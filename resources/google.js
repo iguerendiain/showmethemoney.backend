@@ -4,7 +4,7 @@ var uuid = require('node-uuid');
 var request = require('request');
 var config = require('../config');
 
-exports.createSessionWithGoogle = function(req,res){
+exports.createSession = function(req,res){
 	var dal = req.app.locals.dal;
 
 	var token = req.body.googleToken;

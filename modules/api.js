@@ -19,7 +19,7 @@ exports.getAPI = function(db){
     app.use(cors({origin:true,credentials:true}));
 
     // Authentication
-    app.post('/createSessionWithGoogle', google.createSessionWithGoogle);
+    app.post('/sessionFromGoogle', google.createSession);
     // app.delete('/session', auth.ensureAuthenticated, session.destroyCurrent);
     // app.delete('/session/all', auth.ensureAuthenticated, session.destroyAllSessions);
 

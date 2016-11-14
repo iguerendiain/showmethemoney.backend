@@ -29,7 +29,14 @@ methods.getFirstOrNull = function(results){
 }
 
 methods.runQueryForOneRecord = function(query, params, cb){
-	self.db.query(query+" limit 1", params, function(err, results){
+	var limit;
+	if (query.trim().toLowerCase().startsWith("select")){
+		limit = " limit 1";
+	}else{
+		limit = "";
+	}
+
+	self.db.query(query+limit, params, function(err, results){
 		if (err==null){
 			cb(self.getFirstOrNull(results.rows));
 		}else{
@@ -40,15 +47,21 @@ methods.runQueryForOneRecord = function(query, params, cb){
 }
 
 methods.runQuery = function(query, params, cb){
-	self.db.query(query, params, cb);
+	self.db.query(query, params, function(err, results){
+		if (err==null){
+			cb(results.rows);
+		}else{
+      		log.error("DB","Error running query: "+err);
+			process.exit(1);
+		}
+	});
 }
 
 methods.createUserFromGoogleTokenInfoResponse = function(googleTokenInfo, cb){
-	var query = "insert into person (email,name,firstname,lastname,avatar,google) values ($1,$2,$3,$4,$5,$6)";
-	var userEmail = googleTokenInfo.email;
+	var query = "insert into person (email,name,firstname,lastname,avatar,google) values ($1,$2,$3,$4,$5,$6) returning *";
 
 	var params = [
-		userEmail,
+		googleTokenInfo.email,
 		googleTokenInfo.name,
 		googleTokenInfo.given_name,
 		googleTokenInfo.family_name,
@@ -56,9 +69,7 @@ methods.createUserFromGoogleTokenInfoResponse = function(googleTokenInfo, cb){
 		googleTokenInfo.sub
 	];
 
-	self.runQuery(query,params,function(){
-		self.getOneUserByEmail(userEmail, cb);
-	});
+	self.runQueryForOneRecord(query, params, cb);
 }
 
 methods.createSessionForUser = function(user, clientId, clientType, cb){
@@ -101,22 +112,18 @@ methods.getById = function(table, id, cb){
 }
 
 methods.createClient = function(clientid, clienttype, userid, cb){
-	var query = "insert into client (clientid, type, owner) values ($1, $2, $3::int)";
+	var query = "insert into client (clientid, type, owner) values ($1, $2, $3::int) returning *";
 	var params = [clientid, clienttype, userid];
 
-	self.runQuery(query, params, function(){
-		self.getClientByIdAndType(clientid,clienttype,cb);
-	});
+	self.runQueryForOneRecord(query, params, cb);
 }
 
 methods.createSession = function(client,user,cb){
 	var sessionToken = uuid.v4();
-	var query = "insert into session (token, client, owner) values ($1, $2::int, $3::int)";
+	var query = "insert into session (token, client, owner) values ($1, $2::int, $3::int) returning *";
 	var params = [sessionToken, client.id, user.id];
 
-	self.runQuery(query, params, function(){
-		self.getSessionByToken(sessionToken, cb);
-	});
+	self.runQueryForOneRecord(query, params, cb);
 }
 
 methods.getSessionByToken = function(token,cb){
@@ -126,41 +133,94 @@ methods.getSessionByToken = function(token,cb){
 	self.runQueryForOneRecord(query, params, cb);
 }
 
+methods.getData = function(table, deleted, orderBy, userid, cb){
+	var query = "select * from $1 where owner = $2 and deleted = $3 orderBy $4";
+	var params = [table, userid, deleted, orderBy];
+
+	self.runQuery(query, params, cb);
+}
+
 
 methods.getAllRecordsOwnedBy = function(userid, cb){
+	self.getData("record", false, userid, "time desc", cb);
 }
 
 methods.getAllCurrenciesOwnedBy = function(userid, cb){
+	self.getData("currency", false, userid, "name asc", cb);
 }
 
 methods.getAllAccountsOwnedBy = function(userid, cb){
+	self.getData("account", false, userid, "name asc", cb);
 }
 
 methods.getDeletedRecordsOwnedBy = function(userid, cb){
+	self.getData("record", true, userid, "time desc", cb);
 }
 
 methods.getDeletedCurrenciesOwnedBy = function(userid, cb){
+	self.getData("currency", true, userid, "name asc", cb);
 }
 
 methods.getDeletedAccountsOwnedBy = function(userid, cb){
+	self.getData("account", true, userid, "name asc", cb);
 }
 
-methods.saveNewCurrencies = function(currencies, userid, cb){
+methods.saveData = function(table, fields, properties, data, cb){
+	fields.push("owner");
+	properties.push("owner");
+
+	var tempTableQuery = "create temp table ram_"+table+" (like "+table+") on commit drop";
+	var insertQuery = "insert into ram_"+table+" ("+fields.join(",")+",id,deleted,updated) values ";
+
+	var rowsToInsert = [];
+	for (var d in data){
+		var fieldsToInsert = [];
+		for (var property in properties){
+			fieldsToInsert.push(d[property]);
+		}
+		fieldsToInsert.push(-1);			// id
+		fieldsToInsert.push(false);			// deleted
+		fieldsToInsert.push(-1);			// updated
+
+		rowsToInsert.push("("+fieldsToInsert.join(",")+")");
+	}
+
+	insertQuery+=rowsToInsert.join(",");
+
+	var upsertQuery = 	"with upsert as (update "+table+" real set "+fieldsToUpdate.join(",")+" from ram_"+table+" ram where real.id = ram.id returning ram.id) "+
+						"insert into "+table+" ("+fields.join(",")+") select "+fields.join(",")+" from ram_"+table+" left join upsert using(id) where upsert.id is null group by "+table+".id returning *";
+
+	db.query('begin',function(){
+		db.query(tempTableQuery, function(){
+			self.runQuery(upsertQuery,null,cb);
+		});
+	});
+
 }
 
-methods.saveNewAccounts = function(accounts, userid, cb){
+methods.saveCurrencies = function(currencies, cb){
+	self.saveData("currency",["name","factor"],["name","factor"],currencies,cb);
 }
 
-methods.saveNewRecords = function(records, userid, cb){
+methods.saveAccounts = function(accounts, cb){
+	self.saveData("account",["name","currency"],["name","currency"],currencies,cb);
 }
 
-methods.markRecordsAsDeleted = function(records, userid, cb){
+methods.saveRecords = function(records, cb){
+	var fields = ["description","account","currency","type","time"];
+	self.saveData("record",fields,fields,currencies,cb);
 }
 
-methods.markAccountsAsDeleted = function(accounts, userid, cb){
+methods.markRecordsAsDeleted = function(records, cb){
+	cb();
 }
 
-methods.markCurrenciesAsDeleted = function(currencies, userid, cb){
+methods.markAccountsAsDeleted = function(accounts, cb){
+	cb();
+}
+
+methods.markCurrenciesAsDeleted = function(currencies, cb){
+	cb();
 }
 
 module.exports = Dal;

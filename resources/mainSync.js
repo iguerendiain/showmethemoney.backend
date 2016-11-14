@@ -36,16 +36,16 @@ exports.post = function(req, res){
 	async.series([
 		function(seriesCB){
 			async.parallel([
-				function(cb){saveNewCurrencies(mainSyncData.currencies, userid, cb);},
-				function(cb){saveNewAccounts(mainSyncData.accounts, userid, cb);},
-				function(cb){saveNewRecords(mainSyncData.records, userid, cb);}
+				function(cb){saveCurrencies(mainSyncData.currencies, cb);},
+				function(cb){saveAccounts(mainSyncData.accounts, cb);},
+				function(cb){saveRecords(mainSyncData.records, cb);}
 			],seriesCB);
 		},
 		function(seriesCB){
 			async.parallel([
-				function(cb){markRecordsAsDeleted(mainSyncData.recordsToDelete, userid, cb);},
-				function(cb){markAccountsAsDeleted(mainSyncData.accountsToDelete, userid, cb);},
-				function(cb){markCurrenciesAsDeleted(mainSyncData.currenciesToDelete, userid, cb);}
+				function(cb){markRecordsAsDeleted(mainSyncData.recordsToDelete, cb);},
+				function(cb){markAccountsAsDeleted(mainSyncData.accountsToDelete, cb);},
+				function(cb){markCurrenciesAsDeleted(mainSyncData.currenciesToDelete, cb);}
 			],seriesCB);
 		}
 	],function(){
