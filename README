@@ -1,0 +1,2 @@
+Requires PostgreSQL 9.5 or newer for upserting rows (on conflict do update)
+
