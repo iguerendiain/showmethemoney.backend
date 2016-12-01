@@ -1,6 +1,7 @@
 exports.ensureAuthenticated = function(req, res, next){
 	if (clientThinksIsAuthenticated(req)){
-		var token = req.headers.authorization.split(' ')[1];
+		var token = req.headers.authorization;
+    var dal = req.app.locals.dal;
 
 		dal.getSessionByToken(token,function(session){
 			if (session==null){
@@ -10,8 +11,8 @@ exports.ensureAuthenticated = function(req, res, next){
             		dal.getUser(session.owner,function(user){
             			req.user = user;
             			next();
-        			});
-          		});
+                });
+            });
     		}
 		});
 	}else{
@@ -22,3 +23,4 @@ exports.ensureAuthenticated = function(req, res, next){
 var clientThinksIsAuthenticated = function(req){
 	return req.headers.authorization != null;
 }
+

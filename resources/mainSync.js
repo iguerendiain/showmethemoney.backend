@@ -33,21 +33,27 @@ exports.post = function(req, res){
 	var dal = req.app.locals.dal;
 	var userid = req.user.id;
 
+	// TODO: Check for authentication related to data. Now I only add
+	// the current user as the owner to all.
+	for (var c in mainSyncData.currencies){
+		mainSyncData.currencies[c].owner = userid;
+	}
+
+	for (var a in mainSyncData.accounts){
+		mainSyncData.accounts[a].owner = userid;
+	}
+
+	for (var r in mainSyncData.records){
+		mainSyncData.records[r].owner = userid;
+	}
+
 	async.series([
-		function(seriesCB){
-			async.parallel([
-				function(cb){saveCurrencies(mainSyncData.currencies, cb);},
-				function(cb){saveAccounts(mainSyncData.accounts, cb);},
-				function(cb){saveRecords(mainSyncData.records, cb);}
-			],seriesCB);
-		},
-		function(seriesCB){
-			async.parallel([
-				function(cb){markRecordsAsDeleted(mainSyncData.recordsToDelete, cb);},
-				function(cb){markAccountsAsDeleted(mainSyncData.accountsToDelete, cb);},
-				function(cb){markCurrenciesAsDeleted(mainSyncData.currenciesToDelete, cb);}
-			],seriesCB);
-		}
+		function(cb){dal.saveCurrencies(mainSyncData.currencies,cb);},
+		function(cb){dal.saveAccounts(mainSyncData.accounts,cb);},
+		function(cb){dal.saveRecords(mainSyncData.records,cb);},
+		function(cb){dal.markRecordsAsDeleted(mainSyncData.recordsToDelete, cb);},
+		function(cb){dal.markAccountsAsDeleted(mainSyncData.accountsToDelete, cb);},
+		function(cb){dal.markCurrenciesAsDeleted(mainSyncData.currenciesToDelete, cb);}
 	],function(){
 		res.status(200).send();
 	});

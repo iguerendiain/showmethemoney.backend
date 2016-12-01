@@ -106,8 +106,8 @@ methods.getClient = function(id,cb){
 }
 
 methods.getById = function(table, id, cb){
-	var query = "select * from $1 where id = $2::int";
-	var params = [table,id];
+	var query = "select * from "+table+" where id = $1::int";
+	var params = [id];
 	self.runQueryForOneRecord(query,params,cb);
 }
 
@@ -133,9 +133,9 @@ methods.getSessionByToken = function(token,cb){
 	self.runQueryForOneRecord(query, params, cb);
 }
 
-methods.getData = function(table, deleted, orderBy, userid, cb){
-	var query = "select * from $1 where owner = $2 and deleted = $3 orderBy $4";
-	var params = [table, userid, deleted, orderBy];
+methods.getData = function(table, deleted, userid, orderBy, cb){
+	var query = "select * from "+table+" where owner = $1 and deleted = $2 order by $3";
+	var params = [userid, deleted, orderBy];
 
 	self.runQuery(query, params, cb);
 }
@@ -165,62 +165,93 @@ methods.getDeletedAccountsOwnedBy = function(userid, cb){
 	self.getData("account", true, userid, "name asc", cb);
 }
 
-methods.saveData = function(table, fields, properties, data, cb){
-	fields.push("owner");
-	properties.push("owner");
+methods.upsertData = function(table, fields, properties, data, cb){
+	if (table!=null && data!=null && data.length > 0){
+		var insertQuery = "insert into "+table+" ("+fields.join(",")+",owner,uuid,deleted,updated) values ";
 
-	var tempTableQuery = "create temp table ram_"+table+" (like "+table+") on commit drop";
-	var insertQuery = "insert into ram_"+table+" ("+fields.join(",")+",id,deleted,updated) values ";
+		var rowsToInsert = [];
+		for (var x in data){
+			var d = data[x];
 
-	var rowsToInsert = [];
-	for (var d in data){
-		var fieldsToInsert = [];
-		for (var property in properties){
-			fieldsToInsert.push(d[property]);
+			var fieldsToInsert = [];
+			for (var property in properties){
+				fieldsToInsert.push("'"+d[properties[property]]+"'");
+			}
+
+			fieldsToInsert.push(d.owner);									// owner
+			fieldsToInsert.push("'"+d.uuid+"'");							// id
+			fieldsToInsert.push(false);										// deleted
+			fieldsToInsert.push('extract(epoch from CURRENT_TIMESTAMP)');	// updated
+
+			rowsToInsert.push("("+fieldsToInsert.join(",")+")");
 		}
-		fieldsToInsert.push(-1);			// id
-		fieldsToInsert.push(false);			// deleted
-		fieldsToInsert.push(-1);			// updated
 
-		rowsToInsert.push("("+fieldsToInsert.join(",")+")");
-	}
+		var fieldsToUpdate = [];
+		var allFields = fields.slice();
+		allFields.push('owner');
+		allFields.push('deleted');
+		allFields.push('updated');
+		
+		for (var field in fields){
+			fieldsToUpdate.push(fields[field]+"=excluded."+fields[field]);
+		}
 
-	insertQuery+=rowsToInsert.join(",");
+		insertQuery+=rowsToInsert.join(",") + " on conflict (uuid) do update set "+fieldsToUpdate.join(",")+" returning *";
 
-	var upsertQuery = 	"with upsert as (update "+table+" real set "+fieldsToUpdate.join(",")+" from ram_"+table+" ram where real.id = ram.id returning ram.id) "+
-						"insert into "+table+" ("+fields.join(",")+") select "+fields.join(",")+" from ram_"+table+" left join upsert using(id) where upsert.id is null group by "+table+".id returning *";
-
-	db.query('begin',function(){
-		db.query(tempTableQuery, function(){
-			self.runQuery(upsertQuery,null,cb);
+		self.db.query(insertQuery,function(err,res){
+			if (err){
+				throw err;
+			}else{
+				cb(res.rows);
+			}
 		});
-	});
-
+	}else{
+		cb([]);
+	}
 }
 
 methods.saveCurrencies = function(currencies, cb){
-	self.saveData("currency",["name","factor"],["name","factor"],currencies,cb);
+	var fields = ["factor","name"];
+	self.upsertData("currency", fields, fields, currencies, cb);
 }
 
-methods.saveAccounts = function(accounts, cb){
-	self.saveData("account",["name","currency"],["name","currency"],currencies,cb);
+methods.saveAccounts = function(currencies, cb){
+	var fields = ["name","currency"];
+	self.upsertData("account", fields, fields, currencies, cb);
 }
 
-methods.saveRecords = function(records, cb){
+methods.saveRecords = function(currencies, cb){
 	var fields = ["description","account","currency","type","time"];
-	self.saveData("record",fields,fields,currencies,cb);
+	self.upsertData("record", fields, fields, currencies, cb);
 }
 
 methods.markRecordsAsDeleted = function(records, cb){
-	cb();
+	self.markObjectsAsDeleted("record", records);
 }
 
 methods.markAccountsAsDeleted = function(accounts, cb){
-	cb();
+	self.markObjectsAsDeleted("account", records);
 }
 
 methods.markCurrenciesAsDeleted = function(currencies, cb){
-	cb();
+	self.markObjectsAsDeleted("currency", records);
+}
+
+methods.markObjectsAsDeleted = function(table, data, cb){
+	var ids = [];
+	for (var d in data){
+		if (data[d].id>0){
+			ids.push(data[d].id);
+		}
+	}
+
+	if (ids.length > 0){
+		var query = "update "+table+" set deleted = true, updated = now() where id in $1";
+		var params = [ids];
+		self.runQuery(query, params, cb);
+	}else{
+		cb();
+	}
 }
 
 module.exports = Dal;
