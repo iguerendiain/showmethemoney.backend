@@ -32,10 +32,7 @@ create table session (
 	lastaccess int not null default extract(epoch from CURRENT_TIMESTAMP)
 );
 
--- create sequence currency_id_seq start 1 increment 1 NO MAXVALUE cache 1;
-
 create table currency (
-	-- id int not null primary key default nextval('currency_id_seq'),
 	uuid char(36) not null primary key,
 
 	name varchar(256) not null,
@@ -46,10 +43,7 @@ create table currency (
 	updated int not null default extract(epoch from CURRENT_TIMESTAMP)
 );
 
--- create sequence account_id_seq start 1 increment 1 NO MAXVALUE cache 1;
-
 create table account (
-	-- id int not null primary key default nextval('account_id_seq'),
 	uuid char(36) not null primary key,
 
 	name varchar(256) not null,
@@ -60,12 +54,9 @@ create table account (
 	updated int not null default extract(epoch from CURRENT_TIMESTAMP)
 );
 
--- create sequence record_id_seq start 1 increment 1 NO MAXVALUE cache 1;
-
 create type recordtype as enum ('patch','income','expense');
 
 create table record (
-	-- id int not null primary key default nextval('record_id_seq'),
 	uuid char(36) not null primary key,
 
 	description varchar(256) not null,
