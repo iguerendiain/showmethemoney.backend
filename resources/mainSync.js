@@ -8,12 +8,12 @@ exports.get = function(req, res){
 	var callback = function(results){cb(null, results)};
 
 	async.parallel({
-		records:function(cb){dal.getAllRecordsOwnedBy(userid, cb);},
-		currencies:function(cb){dal.getAllCurrenciesOwnedBy(userid, cb);},
-		accounts:function(cb){dal.getAllAccountsOwnedBy(userid, cb);},
-		recordsToDelete:function(cb){dal.getDeletedRecordsOwnedBy(userid, cb);},
-		currenciesToDelete:function(cb){dal.getDeletedCurrenciesOwnedBy(userid, cb);},
-		accountsToDelete:function(cb){dal.getDeletedAccountsOwnedBy(userid, cb);}
+		records:function(cb){dal.getAllRecordsOwnedBy(userid, function(result){cb(null,result);});},
+		currencies:function(cb){dal.getAllCurrenciesOwnedBy(userid, function(result){cb(null,result);});},
+		accounts:function(cb){dal.getAllAccountsOwnedBy(userid, function(result){cb(null,result);});},
+		recordsToDelete:function(cb){dal.getDeletedRecordsOwnedBy(userid, function(result){cb(null,result);});},
+		currenciesToDelete:function(cb){dal.getDeletedCurrenciesOwnedBy(userid, function(result){cb(null,result);});},
+		accountsToDelete:function(cb){dal.getDeletedAccountsOwnedBy(userid, function(result){cb(null,result);});}
 	},function(err,results){
 		buildAndSendMainSyncData(
 			req,
@@ -33,29 +33,37 @@ exports.post = function(req, res){
 	var dal = req.app.locals.dal;
 	var userid = req.user.id;
 
-	// TODO: Check for authentication related to data. Now I only add
-	// the current user as the owner to all.
-	for (var c in mainSyncData.currencies){
-		mainSyncData.currencies[c].owner = userid;
-	}
+	async.parallel({
+		currencies:function(cb){dal.isOwnerOfCurrencies(mainSyncData.currencies, userid, function(result){cb(null, result);});},
+		records:function(cb){dal.isOwnerOfRecords(mainSyncData.records, userid, function(result){cb(null, result);});},
+		accounts:function(cb){dal.isOwnerOfAccounts(mainSyncData.accounts, userid, function(result){cb(null, result);});}
+	}, function(err, result){
+		if (result.currencies==true && result.records==true && result.accounts==true){
+			for (var c in mainSyncData.currencies){
+				mainSyncData.currencies[c].owner = userid;
+			}
 
-	for (var a in mainSyncData.accounts){
-		mainSyncData.accounts[a].owner = userid;
-	}
+			for (var a in mainSyncData.accounts){
+				mainSyncData.accounts[a].owner = userid;
+			}
 
-	for (var r in mainSyncData.records){
-		mainSyncData.records[r].owner = userid;
-	}
+			for (var r in mainSyncData.records){
+				mainSyncData.records[r].owner = userid;
+			}
 
-	async.series([
-		function(cb){dal.saveCurrencies(mainSyncData.currencies,cb);},
-		function(cb){dal.saveAccounts(mainSyncData.accounts,cb);},
-		function(cb){dal.saveRecords(mainSyncData.records,cb);},
-		function(cb){dal.markRecordsAsDeleted(mainSyncData.recordsToDelete, cb);},
-		function(cb){dal.markAccountsAsDeleted(mainSyncData.accountsToDelete, cb);},
-		function(cb){dal.markCurrenciesAsDeleted(mainSyncData.currenciesToDelete, cb);}
-	],function(){
-		res.status(200).send();
+			async.series([
+				function(cb){dal.saveCurrencies(mainSyncData.currencies,function(result){cb(null, result);});},
+				function(cb){dal.saveAccounts(mainSyncData.accounts,function(result){cb(null, result);});},
+				function(cb){dal.saveRecords(mainSyncData.records,function(result){cb(null, result);});},
+				function(cb){dal.markRecordsAsDeleted(mainSyncData.recordsToDelete,function(){cb(null);});},
+				function(cb){dal.markAccountsAsDeleted(mainSyncData.accountsToDelete,function(){cb(null);});},
+				function(cb){dal.markCurrenciesAsDeleted(mainSyncData.currenciesToDelete,function(){cb(null);});}
+			],function(){
+				res.status(200).send();
+			});
+		}else{
+			res.status(403).send();
+		}
 	});
 }
 

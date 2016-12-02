@@ -226,15 +226,15 @@ methods.saveRecords = function(currencies, cb){
 }
 
 methods.markRecordsAsDeleted = function(records, cb){
-	self.markObjectsAsDeleted("record", records);
+	self.markObjectsAsDeleted("record", records, cb);
 }
 
 methods.markAccountsAsDeleted = function(accounts, cb){
-	self.markObjectsAsDeleted("account", records);
+	self.markObjectsAsDeleted("account", accounts, cb);
 }
 
 methods.markCurrenciesAsDeleted = function(currencies, cb){
-	self.markObjectsAsDeleted("currency", records);
+	self.markObjectsAsDeleted("currency", currencies, cb);
 }
 
 methods.markObjectsAsDeleted = function(table, data, cb){
@@ -246,11 +246,48 @@ methods.markObjectsAsDeleted = function(table, data, cb){
 	}
 
 	if (ids.length > 0){
-		var query = "update "+table+" set deleted = true, updated = now() where id in $1";
+		var query = "update "+table+" set deleted = true, updated = extract(epoch from CURRENT_TIMESTAMP) where id in $1";
 		var params = [ids];
 		self.runQuery(query, params, cb);
 	}else{
 		cb();
+	}
+}
+
+methods.isOwnerOfCurrencies = function(currencies, owner, cb){
+	self.isOwner("currency", currencies, owner, cb);
+}
+
+methods.isOwnerOfAccounts = function(accounts, owner, cb){
+	self.isOwner("account", accounts, owner, cb);
+}
+
+methods.isOwnerOfRecords = function(records, owner, cb){
+	self.isOwner("record", records, owner, cb);
+}
+
+methods.isOwner = function(table, data, owner, cb){
+	if (table==null || owner<=0){
+		cb(false);
+	}else if (data==null || data.length <= 0){
+		cb(true);
+	}else{
+		var query = "select count(1) as c from "+table+" where uuid in ($1) and owner != $2";
+		var uuids = [];
+
+		for (var d in data){
+			uuids.push(data[d].uuid);
+		}
+
+		var params = [uuids, owner];
+
+		self.runQueryForOneRecord(query, params, function(result){
+			if (result.c>0){
+				cb(false);
+			}else{
+				cb(true);
+			}
+		});
 	}
 }
 
