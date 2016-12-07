@@ -36,9 +36,14 @@ exports.post = function(req, res){
 	async.parallel({
 		currencies:function(cb){dal.isOwnerOfCurrencies(mainSyncData.currencies, userid, function(result){cb(null, result);});},
 		records:function(cb){dal.isOwnerOfRecords(mainSyncData.records, userid, function(result){cb(null, result);});},
-		accounts:function(cb){dal.isOwnerOfAccounts(mainSyncData.accounts, userid, function(result){cb(null, result);});}
+		accounts:function(cb){dal.isOwnerOfAccounts(mainSyncData.accounts, userid, function(result){cb(null, result);});},
+		currenciesToDelete:function(cb){dal.isOwnerOfCurrencies(mainSyncData.currenciesToDelete, userid, function(result){cb(null, result);});},
+		recordsToDelete:function(cb){dal.isOwnerOfRecords(mainSyncData.recordsToDelete, userid, function(result){cb(null, result);});},
+		accountsToDelete:function(cb){dal.isOwnerOfAccounts(mainSyncData.accountsToDelete, userid, function(result){cb(null, result);});}
 	}, function(err, result){
-		if (result.currencies==true && result.records==true && result.accounts==true){
+		if (	result.currencies==true && result.records==true && result.accounts==true &&
+				result.currenciesToDelete==true && result.recordsToDelete==true && result.accountsToDelete==true){
+			
 			for (var c in mainSyncData.currencies){
 				mainSyncData.currencies[c].owner = userid;
 			}

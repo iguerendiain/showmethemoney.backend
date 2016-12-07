@@ -1,5 +1,8 @@
+var S = require('string');
 var uuid = require('node-uuid');
 var log = require('./logger');
+
+var TAG = "DAL";
 
 var methods = Dal.prototype;
 
@@ -36,6 +39,7 @@ methods.runQueryForOneRecord = function(query, params, cb){
 		limit = "";
 	}
 
+	log.info(TAG, "runQueryForOneRecord: "+query+" -- ["+params+"]");
 	self.db.query(query+limit, params, function(err, results){
 		if (err==null){
 			cb(self.getFirstOrNull(results.rows));
@@ -47,6 +51,7 @@ methods.runQueryForOneRecord = function(query, params, cb){
 }
 
 methods.runQuery = function(query, params, cb){
+	log.info(TAG, "runQuery: "+query+" -- ["+params+"]");
 	self.db.query(query, params, function(err, results){
 		if (err==null){
 			cb(results.rows);
@@ -198,6 +203,7 @@ methods.upsertData = function(table, fields, properties, data, cb){
 
 		insertQuery+=rowsToInsert.join(",") + " on conflict (uuid) do update set "+fieldsToUpdate.join(",")+" returning *";
 
+		log.info(TAG, "upsertData: "+insertQuery);
 		self.db.query(insertQuery,function(err,res){
 			if (err){
 				throw err;
@@ -238,17 +244,34 @@ methods.markCurrenciesAsDeleted = function(currencies, cb){
 }
 
 methods.markObjectsAsDeleted = function(table, data, cb){
-	var ids = [];
+	/*
+
+		For some weird reason I do not understand yet
+		the query using the parameters do not work
+		while the query built directly with the
+		parameters inside does work.
+
+		I'll leave commented the "right" way of doing
+		this query for a future time when I can fix
+		this.
+
+	*/
+
+	var uuids = [];
 	for (var d in data){
-		if (data[d].id>0){
-			ids.push(data[d].id);
+		if (!S(data[d].uuid).isEmpty()){
+			// uuids.push(data[d].uuid);
+			uuids.push("'"+data[d].uuid+"'");
 		}
 	}
 
-	if (ids.length > 0){
-		var query = "update "+table+" set deleted = true, updated = extract(epoch from CURRENT_TIMESTAMP) where id in $1";
-		var params = [ids];
-		self.runQuery(query, params, cb);
+	if (uuids.length > 0){
+		// var query = "update "+table+" set deleted = true, updated = extract(epoch from CURRENT_TIMESTAMP) where uuid in ($1)";
+		// var params = [uuids];
+
+		var uglyUUIDs = uuids.join();
+		var query = "update "+table+" set deleted = true, updated = extract(epoch from CURRENT_TIMESTAMP) where uuid in ("+uglyUUIDs+")";
+		self.runQuery(query, []/*params*/, cb);
 	}else{
 		cb();
 	}
