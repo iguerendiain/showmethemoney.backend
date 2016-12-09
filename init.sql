@@ -37,6 +37,8 @@ create table currency (
 
 	name varchar(256) not null,
 	factor real not null default 1,
+	code char(3) not null,
+	symbol char(3) not null,
 
 	deleted boolean not null default false,
 	owner int not null references person(id) on delete restrict,

@@ -1,3 +1,9 @@
+/************************************/
+/*									*/
+/*				PLATFORM			*/
+/*									*/
+/************************************/
+
 var S = require('string');
 var uuid = require('node-uuid');
 var log = require('./logger');
@@ -13,15 +19,11 @@ function Dal(db){
 	self = this;
 }
 
-methods.getOneUserByEmail = function(email,cb){
-	var query = "select * from person where email = $1::text";
-	var params = [email];
-	self.runQueryForOneRecord(query,params,cb);
-}
-
-methods.getUser = function(id,cb){
-	self.getById("person",id,cb);
-}
+/************************************/
+/*									*/
+/*				HELPERS				*/
+/*									*/
+/************************************/
 
 methods.getFirstOrNull = function(results){
 	if (results!=null && results.length > 0){
@@ -60,6 +62,27 @@ methods.runQuery = function(query, params, cb){
 			process.exit(1);
 		}
 	});
+}
+
+methods.getById = function(table, id, cb){
+	var query = "select * from "+table+" where id = $1::int";
+	var params = [id];
+	self.runQueryForOneRecord(query,params,cb);
+}
+
+/************************************/
+/*									*/
+/*				AUTH				*/
+/*									*/
+/************************************/
+methods.getOneUserByEmail = function(email,cb){
+	var query = "select * from person where email = $1::text";
+	var params = [email];
+	self.runQueryForOneRecord(query,params,cb);
+}
+
+methods.getUser = function(id,cb){
+	self.getById("person",id,cb);
 }
 
 methods.createUserFromGoogleTokenInfoResponse = function(googleTokenInfo, cb){
@@ -110,12 +133,6 @@ methods.getClient = function(id,cb){
 	methods.getById("client",id,cb);
 }
 
-methods.getById = function(table, id, cb){
-	var query = "select * from "+table+" where id = $1::int";
-	var params = [id];
-	self.runQueryForOneRecord(query,params,cb);
-}
-
 methods.createClient = function(clientid, clienttype, userid, cb){
 	var query = "insert into client (clientid, type, owner) values ($1, $2, $3::int) returning *";
 	var params = [clientid, clienttype, userid];
@@ -138,36 +155,16 @@ methods.getSessionByToken = function(token,cb){
 	self.runQueryForOneRecord(query, params, cb);
 }
 
+/************************************************/
+/*												*/
+/*				HIGH LEVEL HELPERS				*/
+/*												*/
+/************************************************/
 methods.getData = function(table, deleted, userid, orderBy, cb){
 	var query = "select * from "+table+" where owner = $1 and deleted = $2 order by $3";
 	var params = [userid, deleted, orderBy];
 
 	self.runQuery(query, params, cb);
-}
-
-
-methods.getAllRecordsOwnedBy = function(userid, cb){
-	self.getData("record", false, userid, "time desc", cb);
-}
-
-methods.getAllCurrenciesOwnedBy = function(userid, cb){
-	self.getData("currency", false, userid, "name asc", cb);
-}
-
-methods.getAllAccountsOwnedBy = function(userid, cb){
-	self.getData("account", false, userid, "name asc", cb);
-}
-
-methods.getDeletedRecordsOwnedBy = function(userid, cb){
-	self.getData("record", true, userid, "time desc", cb);
-}
-
-methods.getDeletedCurrenciesOwnedBy = function(userid, cb){
-	self.getData("currency", true, userid, "name asc", cb);
-}
-
-methods.getDeletedAccountsOwnedBy = function(userid, cb){
-	self.getData("account", true, userid, "name asc", cb);
 }
 
 methods.upsertData = function(table, fields, properties, data, cb){
@@ -216,33 +213,6 @@ methods.upsertData = function(table, fields, properties, data, cb){
 	}
 }
 
-methods.saveCurrencies = function(currencies, cb){
-	var fields = ["factor","name"];
-	self.upsertData("currency", fields, fields, currencies, cb);
-}
-
-methods.saveAccounts = function(currencies, cb){
-	var fields = ["name","currency"];
-	self.upsertData("account", fields, fields, currencies, cb);
-}
-
-methods.saveRecords = function(currencies, cb){
-	var fields = ["description","account","currency","type","time"];
-	self.upsertData("record", fields, fields, currencies, cb);
-}
-
-methods.markRecordsAsDeleted = function(records, cb){
-	self.markObjectsAsDeleted("record", records, cb);
-}
-
-methods.markAccountsAsDeleted = function(accounts, cb){
-	self.markObjectsAsDeleted("account", accounts, cb);
-}
-
-methods.markCurrenciesAsDeleted = function(currencies, cb){
-	self.markObjectsAsDeleted("currency", currencies, cb);
-}
-
 methods.markObjectsAsDeleted = function(table, data, cb){
 	/*
 
@@ -277,18 +247,6 @@ methods.markObjectsAsDeleted = function(table, data, cb){
 	}
 }
 
-methods.isOwnerOfCurrencies = function(currencies, owner, cb){
-	self.isOwner("currency", currencies, owner, cb);
-}
-
-methods.isOwnerOfAccounts = function(accounts, owner, cb){
-	self.isOwner("account", accounts, owner, cb);
-}
-
-methods.isOwnerOfRecords = function(records, owner, cb){
-	self.isOwner("record", records, owner, cb);
-}
-
 methods.isOwner = function(table, data, owner, cb){
 	if (table==null || owner<=0){
 		cb(false);
@@ -312,6 +270,84 @@ methods.isOwner = function(table, data, owner, cb){
 			}
 		});
 	}
+}
+
+/************************************/
+/*									*/
+/*				RECORDS				*/
+/*									*/
+/************************************/
+methods.getAllRecordsOwnedBy = function(userid, cb){
+	self.getData("record", false, userid, "time desc", cb);
+}
+
+methods.getDeletedRecordsOwnedBy = function(userid, cb){
+	self.getData("record", true, userid, "time desc", cb);
+}
+
+methods.saveRecords = function(currencies, cb){
+	var fields = ["description","account","currency","type","time"];
+	self.upsertData("record", fields, fields, currencies, cb);
+}
+
+methods.markRecordsAsDeleted = function(records, cb){
+	self.markObjectsAsDeleted("record", records, cb);
+}
+
+methods.isOwnerOfRecords = function(records, owner, cb){
+	self.isOwner("record", records, owner, cb);
+}
+
+/************************************/
+/*									*/
+/*				CURRENCIES			*/
+/*									*/
+/************************************/
+methods.getAllCurrenciesOwnedBy = function(userid, cb){
+	self.getData("currency", false, userid, "name asc", cb);
+}
+
+methods.getDeletedCurrenciesOwnedBy = function(userid, cb){
+	self.getData("currency", true, userid, "name asc", cb);
+}
+
+methods.saveCurrencies = function(currencies, cb){
+	var fields = ["factor","name","symbol","code"];
+	self.upsertData("currency", fields, fields, currencies, cb);
+}
+
+methods.markCurrenciesAsDeleted = function(currencies, cb){
+	self.markObjectsAsDeleted("currency", currencies, cb);
+}
+
+methods.isOwnerOfCurrencies = function(currencies, owner, cb){
+	self.isOwner("currency", currencies, owner, cb);
+}
+
+/************************************/
+/*									*/
+/*				ACCOUNTS			*/
+/*									*/
+/************************************/
+methods.getAllAccountsOwnedBy = function(userid, cb){
+	self.getData("account", false, userid, "name asc", cb);
+}
+
+methods.getDeletedAccountsOwnedBy = function(userid, cb){
+	self.getData("account", true, userid, "name asc", cb);
+}
+
+methods.saveAccounts = function(currencies, cb){
+	var fields = ["name","currency"];
+	self.upsertData("account", fields, fields, currencies, cb);
+}
+
+methods.markAccountsAsDeleted = function(accounts, cb){
+	self.markObjectsAsDeleted("account", accounts, cb);
+}
+
+methods.isOwnerOfAccounts = function(accounts, owner, cb){
+	self.isOwner("account", accounts, owner, cb);
 }
 
 module.exports = Dal;
