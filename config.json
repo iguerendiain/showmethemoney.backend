@@ -17,5 +17,10 @@
 	},
 	"validUsers":[
 		"iguerendiain@siema.com.ar"
-	]
+	],
+	"openExchangeRate":{
+		"appID":"51b69d69949e42bf822b657175040e8b",
+		"useMockup":true,
+		"cronUpdate":"0 0 0,6,12,18 * * *"
+	}
 }

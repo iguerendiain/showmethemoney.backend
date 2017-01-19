@@ -285,9 +285,9 @@ methods.getDeletedRecordsOwnedBy = function(userid, cb){
 	self.getData("record", true, userid, "time desc", cb);
 }
 
-methods.saveRecords = function(currencies, cb){
+methods.saveRecords = function(records, cb){
 	var fields = ["description","account","currency","type","time"];
-	self.upsertData("record", fields, fields, currencies, cb);
+	self.upsertData("record", fields, fields, records, cb);
 }
 
 methods.markRecordsAsDeleted = function(records, cb){
@@ -296,32 +296,6 @@ methods.markRecordsAsDeleted = function(records, cb){
 
 methods.isOwnerOfRecords = function(records, owner, cb){
 	self.isOwner("record", records, owner, cb);
-}
-
-/************************************/
-/*									*/
-/*				CURRENCIES			*/
-/*									*/
-/************************************/
-methods.getAllCurrenciesOwnedBy = function(userid, cb){
-	self.getData("currency", false, userid, "name asc", cb);
-}
-
-methods.getDeletedCurrenciesOwnedBy = function(userid, cb){
-	self.getData("currency", true, userid, "name asc", cb);
-}
-
-methods.saveCurrencies = function(currencies, cb){
-	var fields = ["factor","name","symbol","code"];
-	self.upsertData("currency", fields, fields, currencies, cb);
-}
-
-methods.markCurrenciesAsDeleted = function(currencies, cb){
-	self.markObjectsAsDeleted("currency", currencies, cb);
-}
-
-methods.isOwnerOfCurrencies = function(currencies, owner, cb){
-	self.isOwner("currency", currencies, owner, cb);
 }
 
 /************************************/
@@ -337,9 +311,9 @@ methods.getDeletedAccountsOwnedBy = function(userid, cb){
 	self.getData("account", true, userid, "name asc", cb);
 }
 
-methods.saveAccounts = function(currencies, cb){
+methods.saveAccounts = function(accounts, cb){
 	var fields = ["name","currency"];
-	self.upsertData("account", fields, fields, currencies, cb);
+	self.upsertData("account", fields, fields, accounts, cb);
 }
 
 methods.markAccountsAsDeleted = function(accounts, cb){
@@ -348,6 +322,79 @@ methods.markAccountsAsDeleted = function(accounts, cb){
 
 methods.isOwnerOfAccounts = function(accounts, owner, cb){
 	self.isOwner("account", accounts, owner, cb);
+}
+
+/************************************/
+/*									*/
+/*				CURRENCIES			*/
+/*									*/
+/************************************/
+methods.areCurrenciesLoaded = function(cb){
+	var query = "select count(1) c from currency";
+	self.runQueryForOneRecord(query, null, function(results){
+		if (results!=null && results.c > 0){
+			cb(true);
+		}else{
+			cb(false);
+		}
+	});
+}
+
+methods.upsertCurrencyRates = function(rates, cb){
+	if (rates!=null && Object.keys(rates).length > 0){
+		var rowsToInsert = [];
+		for (var r in rates){
+			var code = r;
+			var factor = rates[r];
+			var id = uuid.v4();
+			rowsToInsert.push("('"+id+"',"+factor+",'"+code+"')");
+		}
+
+		var insertQuery=
+			"insert into currency (uuid,factor,code) values "+rowsToInsert.join(",") +
+			" on conflict (code) do update set factor=excluded.factor returning *";
+
+		log.info(TAG, "upsertCurrency: "+insertQuery);
+		self.db.query(insertQuery,function(err,res){
+			if (err){
+				throw err;
+			}else{
+				cb(res.rows);
+			}
+		});
+	}else{
+		cb([]);
+	}
+}
+
+methods.updateCurrencyNames = function(names, cb){
+	if (names!=null && Object.keys(names).length > 0){
+
+		var virtualTable = [];
+		for (var r in names){
+			var code = r;
+			var name = names[r];
+			virtualTable.push("('"+code+"','"+name+"')");
+		}
+
+		var updateQuery = "update currency as real set name = virtual.name "+
+		"from (values "+virtualTable.join(",")+") as virtual(code,name) where virtual.code = real.code";
+
+		log.info(TAG, "updateCurrencyNames: "+updateQuery);
+		self.db.query(updateQuery,function(err,res){
+			if (err){
+				throw err;
+			}else{
+				cb();
+			}
+		});
+	}else{
+		cb([]);
+	}
+}
+
+methods.getAllCurrencies = function(cb){
+	self.runQuery("select * from currency order by name,code asc",null,cb);
 }
 
 module.exports = Dal;

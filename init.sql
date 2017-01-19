@@ -33,23 +33,20 @@ create table session (
 );
 
 create table currency (
-	uuid char(36) not null primary key,
-
-	name varchar(256) not null,
+	uuid char(36) not null,
+	name varchar(256),
 	factor real not null default 1,
-	code varchar(3) not null,
-	symbol varchar(3) not null,
-
-	deleted boolean not null default false,
-	owner int not null references person(id) on delete restrict,
-	updated int not null default extract(epoch from CURRENT_TIMESTAMP)
+	code varchar(3) not null primary key,
+	symbol varchar(4)
 );
+
+create unique index currency_uuid on currency (uuid);
 
 create table account (
 	uuid char(36) not null primary key,
 
 	name varchar(256) not null,
-	currency char(36) not null references currency(uuid) on delete restrict,
+	currency varchar(3) not null references currency(code) on delete restrict,
 
 	deleted boolean not null default false,
 	owner int not null references person(id) on delete restrict,
@@ -63,7 +60,7 @@ create table record (
 
 	description varchar(256) not null,
 	account char(36) not null references account(uuid) on delete restrict,
-	currency char(36) not null references currency(uuid) on delete restrict,
+	currency varchar(3) not null references currency(code) on delete restrict,
 	type recordtype not null,
 	time int not null,
 

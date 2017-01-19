@@ -5,6 +5,7 @@ var bodyParser = require('body-parser');
 var auth = require('./auth');
 var Dal = require('./dal');
 var config = require('../config');
+var currency = require('../resources/currency');
 var mainSync = require('../resources/mainSync');
 var google = require('../resources/google');
 var logger = require('../modules/logger');
@@ -26,6 +27,9 @@ exports.getAPI = function(db){
     // Main Sync
     app.get('/mainSync', auth.ensureAuthenticated, /*auth.isAllowed, */mainSync.get);
     app.post('/mainSync', auth.ensureAuthenticated, /*auth.isAllowed, */mainSync.post);
+
+    // Currency
+    app.get('/currency', /*auth.ensureAuthenticated, */currency.get);
 
     return app;
 }
