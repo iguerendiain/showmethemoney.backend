@@ -286,7 +286,7 @@ methods.getDeletedRecordsOwnedBy = function(userid, cb){
 }
 
 methods.saveRecords = function(records, cb){
-	var fields = ["description","account","currency","type","time"];
+	var fields = ["description","account","currency","type","time","amount"];
 	self.upsertData("record", fields, fields, records, cb);
 }
 
@@ -312,7 +312,7 @@ methods.getDeletedAccountsOwnedBy = function(userid, cb){
 }
 
 methods.saveAccounts = function(accounts, cb){
-	var fields = ["name","currency"];
+	var fields = ["name","currency","balance"];
 	self.upsertData("account", fields, fields, accounts, cb);
 }
 

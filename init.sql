@@ -47,6 +47,7 @@ create table account (
 
 	name varchar(256) not null,
 	currency varchar(3) not null references currency(code) on delete restrict,
+	balance int not null default 0,
 
 	deleted boolean not null default false,
 	owner int not null references person(id) on delete restrict,
@@ -63,6 +64,7 @@ create table record (
 	currency varchar(3) not null references currency(code) on delete restrict,
 	type recordtype not null,
 	time int not null,
+	amount int not null,
 
 	deleted boolean not null default false,
 	owner int not null references person(id) on delete restrict,
