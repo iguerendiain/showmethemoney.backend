@@ -47,10 +47,10 @@ exports.post = function(req, res){
 			}
 
 			async.series([
-				function(cb){dal.saveAccounts(mainSyncData.accounts,function(result){cb(null, result);});},
-				function(cb){dal.saveRecords(mainSyncData.records,function(result){cb(null, result);});},
-				function(cb){dal.markRecordsAsDeleted(mainSyncData.recordsToDelete,function(){cb(null);});},
-				function(cb){dal.markAccountsAsDeleted(mainSyncData.accountsToDelete,function(){cb(null);});}
+				function(cb){dal.saveAccounts(mainSyncData.accounts,cb);},
+				function(cb){dal.saveRecords(mainSyncData.records,cb);},
+				function(cb){dal.markRecordsAsDeleted(mainSyncData.recordsToDelete,cb);},
+				function(cb){dal.markAccountsAsDeleted(mainSyncData.accountsToDelete,cb);}
 			],function(){
 				res.status(200).send();
 			});

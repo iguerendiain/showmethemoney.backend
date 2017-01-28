@@ -278,7 +278,18 @@ methods.isOwner = function(table, data, owner, cb){
 /*									*/
 /************************************/
 methods.getAllRecordsOwnedBy = function(userid, cb){
-	self.getData("record", false, userid, "time desc", cb);
+	var query = 
+		"select r.*,array_agg(tag) as tags "+
+		"from record r "+
+		"left join tag_record x on x.recorduuid = r.uuid "+
+		"left join tag t on t.id = x.tagid "+
+		"where owner = $1 "+
+		"and deleted = $2 "+
+		"group by r.uuid "+
+		"order by $3";
+
+	var params = [userid, false, "time desc"];
+	self.runQuery(query, params, cb);
 }
 
 methods.getDeletedRecordsOwnedBy = function(userid, cb){
@@ -286,8 +297,47 @@ methods.getDeletedRecordsOwnedBy = function(userid, cb){
 }
 
 methods.saveRecords = function(records, cb){
-	var fields = ["description","account","currency","type","time","amount"];
-	self.upsertData("record", fields, fields, records, cb);
+	var fields = ["description","account","currency","type","time","amount","loclat","loclng"];
+	
+	async.parallel({
+		records:function(cb){self.upsertData("record", fields, fields, records, cb);},
+		tags:function(cb){
+			var tags = records.tags;
+
+			var rowsToInsert = [];
+			for (var t in tags){
+				var tag = t.tag;
+				rowsToInsert.push("('"+tag+"')");
+			}
+
+			var insertQuery = 
+				"insert into tag (tag) values "+rowsToInsert.join(",") +
+				" on conflict (tag) do update set tag=excluded.tag returning *";
+
+			log.info(TAG, "upsertTags: "+insertQuery);
+			self.db.query(insertQuery,function(err,res){
+				if (err){
+					throw err;
+				}else{
+					var rowsToInsert = [];
+					for (var r in records){
+						for (var t in res.rows){
+							var tagId = t.id;
+							var recordUUID = r.uuid;
+
+							rowsToInsert.push("("+tagId+",'"+recordUUID+"')");
+						}
+					}
+
+					var insertQuery = "insert into tag_record values "+rowsToInsert.join(",")+" on conflict (tagid,recorduuid) do nothing";
+
+					cb(res.rows);
+				}
+			});
+		}
+	},function(err, results){
+		cb(results);
+	});
 }
 
 methods.markRecordsAsDeleted = function(records, cb){

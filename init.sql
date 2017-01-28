@@ -65,8 +65,26 @@ create table record (
 	type recordtype not null,
 	time int not null,
 	amount int not null,
+	loclat real,
+	loclng real, 
 
 	deleted boolean not null default false,
 	owner int not null references person(id) on delete restrict,
 	updated int not null default extract(epoch from CURRENT_TIMESTAMP)
 );
+
+create sequence tag_id_seq start 1 increment 1 NO MAXVALUE cache 1;
+
+create table tag (
+	id int not null primary key default nextval('tag_id_seq'),
+	tag varchar(64) not null
+);
+
+create unique index tag_tag on tag (tag);
+
+create table tag_record (
+	tagid int not null,
+	recorduuid char(36) not null
+);
+
+create unique index tag_records on tag_record (tagid, recorduuid);
