@@ -46,14 +46,27 @@ exports.post = function(req, res){
 				mainSyncData.records[r].owner = userid;
 			}
 
-			async.series([
-				function(cb){dal.saveAccounts(mainSyncData.accounts,cb);},
-				function(cb){dal.saveRecords(mainSyncData.records,cb);},
-				function(cb){dal.markRecordsAsDeleted(mainSyncData.recordsToDelete,cb);},
-				function(cb){dal.markAccountsAsDeleted(mainSyncData.accountsToDelete,cb);}
-			],function(){
-				res.status(200).send();
+			// Instead of using Async Parallel I'm doing it callback-hell style here
+			// because for some reason Async wont work.
+
+			dal.saveAccounts(mainSyncData.accounts,function(){
+				dal.saveRecords(mainSyncData.records,function(){
+					dal.markRecordsAsDeleted(mainSyncData.recordsToDelete,function(){
+						dal.markAccountsAsDeleted(mainSyncData.accountsToDelete,function(){
+							res.status(200).send();
+						});
+					});
+				});
 			});
+
+			// async.parallel([
+			// 	function(cb){dal.saveAccounts(mainSyncData.accounts,cb);},
+			// 	function(cb){dal.saveRecords(mainSyncData.records,cb);},
+			// 	function(cb){dal.markRecordsAsDeleted(mainSyncData.recordsToDelete,cb);},
+			// 	function(cb){dal.markAccountsAsDeleted(mainSyncData.accountsToDelete,cb);}
+			// ],function(){
+			// 	res.status(200).send();
+			// });
 		}else{
 			res.status(403).send();
 		}

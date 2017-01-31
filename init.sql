@@ -88,3 +88,19 @@ create table tag_record (
 );
 
 create unique index tag_records on tag_record (tagid, recorduuid);
+
+create view record_populated as
+	select
+		r.uuid,
+		r.description,
+		r.time,
+		min(a.name) as account,
+		r.currency,
+		'$'||amount::real/100 as amount,
+		case when count(t.tag)=0 then null else array_agg(t.tag) end as tags
+	from record r
+	left join account a on a.uuid = r.account
+	left join tag_record x on x.recorduuid = r.uuid
+	left join tag t on t.id = x.tagid
+	group by r.uuid
+	order by time desc;

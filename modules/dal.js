@@ -4,6 +4,7 @@
 /*									*/
 /************************************/
 
+var async = require('async');
 var S = require('string');
 var uuid = require('node-uuid');
 var log = require('./logger');
@@ -53,12 +54,13 @@ methods.runQueryForOneRecord = function(query, params, cb){
 }
 
 methods.runQuery = function(query, params, cb){
-	log.info(TAG, "runQuery: "+query+" -- ["+params+"]");
+	var queryLog = query+" -- ["+params+"]";
+	log.info(TAG, "runQuery: "+queryLog);
 	self.db.query(query, params, function(err, results){
 		if (err==null){
 			cb(results.rows);
 		}else{
-      		log.error("DB","Error running query: "+err);
+      		log.error("DB","Error running query: "+queryLog+" -- Error thrown: "+err);
 			process.exit(1);
 		}
 	});
@@ -279,7 +281,7 @@ methods.isOwner = function(table, data, owner, cb){
 /************************************/
 methods.getAllRecordsOwnedBy = function(userid, cb){
 	var query = 
-		"select r.*,array_agg(tag) as tags "+
+		"select r.*,case when count(t.tag)=0 then null else array_agg(t.tag) end as tags "+
 		"from record r "+
 		"left join tag_record x on x.recorduuid = r.uuid "+
 		"left join tag t on t.id = x.tagid "+
@@ -302,12 +304,20 @@ methods.saveRecords = function(records, cb){
 	async.parallel({
 		records:function(cb){self.upsertData("record", fields, fields, records, cb);},
 		tags:function(cb){
-			var tags = records.tags;
+			var rawTags = [];
+
+			for (var r in records){
+				rawTags = rawTags.concat(records[r].tags);
+			}
+
+			var tags = rawTags.filter(function(elem, pos) {
+    			return rawTags.indexOf(elem) == pos;
+			});
 
 			var rowsToInsert = [];
 			for (var t in tags){
-				var tag = t.tag;
-				rowsToInsert.push("('"+tag+"')");
+				var tag = tags[t];
+				rowsToInsert.push("('"+S(tag).slugify()+"')");
 			}
 
 			var insertQuery = 
@@ -315,24 +325,24 @@ methods.saveRecords = function(records, cb){
 				" on conflict (tag) do update set tag=excluded.tag returning *";
 
 			log.info(TAG, "upsertTags: "+insertQuery);
-			self.db.query(insertQuery,function(err,res){
-				if (err){
-					throw err;
-				}else{
-					var rowsToInsert = [];
-					for (var r in records){
-						for (var t in res.rows){
-							var tagId = t.id;
-							var recordUUID = r.uuid;
+			self.runQuery(insertQuery,null,function(tags){
+				var rowsToInsert = [];
+				var recordUUIDs = [];
+				for (var r in records){
+					recordUUIDs.push("'"+records[r].uuid+"'");
+					for (var t in tags){
+						var tagId = tags[t].id;
+						var recordUUID = records[r].uuid;
 
-							rowsToInsert.push("("+tagId+",'"+recordUUID+"')");
-						}
+						rowsToInsert.push("("+tagId+",'"+recordUUID+"')");
 					}
-
-					var insertQuery = "insert into tag_record values "+rowsToInsert.join(",")+" on conflict (tagid,recorduuid) do nothing";
-
-					cb(res.rows);
 				}
+
+				var clearTagsQuery = "delete from tag_record where recorduuid in ("+recordUUIDs.join(",")+")";
+				self.runQuery(clearTagsQuery, null, function(){
+					var insertQuery = "insert into tag_record values "+rowsToInsert.join(",")+" on conflict (tagid,recorduuid) do nothing";
+					self.runQuery(insertQuery, null, cb);
+				});
 			});
 		}
 	},function(err, results){
