@@ -1,45 +1,57 @@
 var googleTokenVerificationURL = "https://www.googleapis.com/oauth2/v3/tokeninfo";
 
 var uuid = require('node-uuid');
+var JWTFactory = require('jsonwebtoken');
 var request = require('request');
 var config = require('../config');
 
 exports.createSession = function(req,res){
-	var dal = req.app.locals.dal;
+	var token = JWTFactory.sign(
+		{foo:'bar'},
+		uuid.v4(),
+		{expiresIn:config.session.expirationTimeSeconds}
+	);
 
-	var token = req.body.googleToken;
-	var clientId = req.body.clientId;
-	var clientType = req.body.clientType;
+	res.send({token:token});
 
-	request.post(
-		googleTokenVerificationURL,
-		{
-			json: true,
-			qs: {id_token:token}
-		}
-	,function(error, response, googleTokenInfo){
-		if (error){
-			res.status(403).send("Google told me: "+response);
-		}else{
-			if (googleTokenInfo.aud == config.federated.google.clientId){
-				dal.getOneUserByEmail(googleTokenInfo.email, function(user){
-					if (user==null){
-						dal.createUserFromGoogleTokenInfoResponse(googleTokenInfo, function(user){
-							createSession(dal, res, user, clientId, clientType, function(session){
-								res.status(200).send(session);
-							});
-						});
-					}else{
-						createSession(dal, res, user, clientId, clientType, function(session){
-							res.status(200).send(session);
-						});
-					}
-				});
-			}else{
-				res.status(403).send("Invalid Google token");
-			}			
-		}
-	});
+
+
+
+	// var dal = req.app.locals.dal;
+
+	// var token = req.body.googleToken;
+	// var clientId = req.body.clientId;
+	// var clientType = req.body.clientType;
+
+	// request.post(
+	// 	googleTokenVerificationURL,
+	// 	{
+	// 		json: true,
+	// 		qs: {id_token:token}
+	// 	}
+	// ,function(error, response, googleTokenInfo){
+	// 	if (error){
+	// 		res.status(403).send("Google told me: "+response);
+	// 	}else{
+	// 		if (googleTokenInfo.aud == config.federated.google.clientId){
+	// 			dal.getOneUserByEmail(googleTokenInfo.email, function(user){
+	// 				if (user==null){
+	// 					dal.createUserFromGoogleTokenInfoResponse(googleTokenInfo, function(user){
+	// 						createSession(dal, res, user, clientId, clientType, function(session){
+	// 							res.status(200).send(session);
+	// 						});
+	// 					});
+	// 				}else{
+	// 					createSession(dal, res, user, clientId, clientType, function(session){
+	// 						res.status(200).send(session);
+	// 					});
+	// 				}
+	// 			});
+	// 		}else{
+	// 			res.status(403).send("Invalid Google token");
+	// 		}			
+	// 	}
+	// });
 }
 
 var createSession = function(dal, res, user, clientId, clientType, cb){

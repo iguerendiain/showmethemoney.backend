@@ -10,6 +10,9 @@
 		"max":50,
 		"idleTimeoutMillis":5000
 	},
+	"session":{
+		"expirationTimeSeconds":300
+	},
 	"federated":{
 		"google":{
 			"clientId":"967046286641-6cbt7t3cnshq50pqaii2q5sc3e1qpf8d.apps.googleusercontent.com"

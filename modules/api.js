@@ -19,6 +19,14 @@ exports.getAPI = function(db){
     app.use(bodyParser.urlencoded({extended:true}));
     app.use(cors({origin:true,credentials:true}));
 
+    // app.use(function(req, res, next) {
+    //     res.setHeader('Access-Control-Allow-Origin', config.apiUrl);
+    //     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    //     res.header('Access-Control-Allow-Methods', 'POST, GET, PUT, DELETE, OPTIONS');
+    //     res.header('Content-Type', 'application/json');
+    //     next();
+    // });
+
     // Authentication
     app.post('/sessionFromGoogle', google.createSession);
     // app.delete('/session', auth.ensureAuthenticated, session.destroyCurrent);
